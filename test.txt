@@ -86,3 +86,98 @@ FastAPI רץ בקונטיינר אחר.
 שניהם מחוברים דרך Docker Network.
 
 הקוד שלך ניגש ל־MongoDB לפי שם הקונטיינר (mongodb) ולא לפי IP.
+
+
+
+
+עוד אופציה
+from fastapi import FastAPI
+from pydantic import BaseModel
+from dal import MongoDAL
+
+app = FastAPI()
+
+# שם הקונטיינר של MongoDB יהיה "mongodb"
+mongo = MongoDAL(uri="mongodb://mongodb:27017/", db_name="mydb", collection="users")
+
+# מודל נתונים
+class User(BaseModel):
+    name: str
+    age: int
+
+@app.post("/users")
+async def create_user(user: User):
+    user_id = mongo.insert_one(user.dict())  # המרה ל־dict
+    return {"inserted_id": str(user_id)}
+
+@app.get("/users")
+async def get_users():
+    return mongo.find_all()
+
+@app.get("/users/{field}/{value}")
+async def get_user_by_field(field: str, value: str):
+    return mongo.find_by_field(field, value)
+
+מה השתנה כאן?
+
+במקום לקבל user: dict → עכשיו זה user: User.
+
+FastAPI יעשה ולידציה לפי ה־schema של User.
+
+user.dict() הופך את ה־User חזרה ל־dict לפני שמכניסים ל־MongoDB.
+
+
+יתרון נוסף
+
+ב־Swagger UI (http://localhost:8000/docs) תראה את המודל בצורה מסודרת:
+
+{
+  "name": "David",
+  "age": 30
+}
+
+עוד אופציה
+from fastapi import FastAPI
+from pydantic import BaseModel
+from dal import MongoDAL
+
+app = FastAPI()
+
+# חיבור ל־MongoDB (שם הקונטיינר: mongodb)
+mongo = MongoDAL(uri="mongodb://mongodb:27017/", db_name="mydb", collection="users")
+
+# --- מודלים ---
+
+# קלט: משתמש שנכנס
+class UserIn(BaseModel):
+    name: str
+    age: int
+
+# פלט: משתמש שיוצא
+class UserOut(BaseModel):
+    name: str
+    age: int
+
+# פלט: תגובה אחרי יצירה
+class CreateResponse(BaseModel):
+    inserted_id: str
+
+
+# --- ראוטים ---
+
+@app.post("/users", response_model=CreateResponse)
+async def create_user(user: UserIn):
+    user_id = mongo.insert_one(user.dict())  # המרה ל־dict
+    return {"inserted_id": str(user_id)}
+
+
+@app.get("/users", response_model=list[UserOut])
+async def get_users():
+    return mongo.find_all()
+
+
+@app.get("/users/{field}/{value}", response_model=list[UserOut])
+async def get_user_by_field(field: str, value: str):
+    return mongo.find_by_field(field, value)
+
+
