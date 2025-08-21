@@ -1,0 +1,88 @@
+project/
+│── main.py
+│── dal.py
+│── requirements.txt
+│── Dockerfile
+
+
+
+from pymongo import MongoClient
+
+class MongoDAL:
+    def __init__(self, uri: str, db_name: str, collection: str):
+        self.client = MongoClient(uri)
+        self.db = self.client[db_name]
+        self.collection = self.db[collection]
+
+    def insert_one(self, data: dict):
+        return self.collection.insert_one(data).inserted_id
+
+    def find_all(self):
+        return list(self.collection.find({}, {"_id": 0}))  # בלי _id
+
+    def find_by_field(self, field: str, value: str):
+        return list(self.collection.find({field: value}, {"_id": 0}))
+
+
+from fastapi import FastAPI
+from dal import MongoDAL
+
+app = FastAPI()
+
+# שם הקונטיינר של MongoDB יהיה "mongodb"
+mongo = MongoDAL(uri="mongodb://mongodb:27017/", db_name="mydb", collection="users")
+
+@app.post("/users")
+async def create_user(user: dict):
+    user_id = mongo.insert_one(user)
+    return {"inserted_id": str(user_id)}
+
+@app.get("/users")
+async def get_users():
+    return mongo.find_all()
+
+@app.get("/users/{field}/{value}")
+async def get_user_by_field(field: str, value: str):
+    return mongo.find_by_field(field, value)
+
+
+fastapi
+uvicorn[standard]
+pymongo
+
+
+FROM python:3.11-slim
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+
+
+docker network create my_network
+docker pull mongodb/mongodb-community-server:latest
+
+docker run -d --name mongodb --network my_network -p 27017:27017 mongodb/mongodb-community-server:latest
+docker build -t my_app .
+docker run -d --name my_app --network my_network -p 8000:8000 my_app
+שלב 4: בדיקה
+
+הוסף משתמש:
+curl -X POST "http://localhost:8000/users" -H "Content-Type: application/json" -d '{"name":"David","age":30}'
+שלוף את כל המשתמשים:
+
+curl http://localhost:8000/users
+📌 סיכום
+
+MongoDB רץ בקונטיינר אחד.
+
+FastAPI רץ בקונטיינר אחר.
+
+שניהם מחוברים דרך Docker Network.
+
+הקוד שלך ניגש ל־MongoDB לפי שם הקונטיינר (mongodb) ולא לפי IP.

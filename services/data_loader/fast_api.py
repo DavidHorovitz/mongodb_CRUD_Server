@@ -1,30 +1,27 @@
 from fastapi import FastAPI
-import dal
-from services.data_loader.dal import DataLoader
+from dal import DataLoader as dl
+import soldiers
+from pydantic import BaseModel
 
 app = FastAPI()
 
 
 
 @app.post("/POST")
-async def create_item():
-    dal = DataLoader()
-    dal.insert_data(ID,first_name,last_name,phone_number,rank)
+async def create_item(ID,first_name,last_name,phone_number,rank):
+    dl.insert_data(ID,first_name,last_name,phone_number,rank)
 
 @app.get("/GET")
 async def read_item():
-    dal = DataLoader()
-    gety=dal.get_all_data()
-    return gety
+    return dl.get_all_data()
+
 
 @app.put("/PUT")
-async def update_item():
-    dal = DataLoader()
-    dal.update_data(id,param)
+async def update_item(ID,param):
+    dl.update_data(ID,param)
 
 
 @app.delete("/DELETE")
-async def delete_item(item_id: int):
-    dal = DataLoader()
-    dal.delete_data(id)
+async def delete_item(ID):
+    dl.delete_data(ID)
     return {"message": "Item deleted successfully"}
